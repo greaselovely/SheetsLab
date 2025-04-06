@@ -60,14 +60,6 @@ function fetchApiData(options) {
         apiUrl = 'https://open.er-api.com/v6/latest/USD';
         apiTitle = 'Exchange Rates API';
         break;
-      case 'iss-location':
-        apiUrl = 'http://api.open-notify.org/iss-now.json';
-        apiTitle = 'ISS Current Location API';
-        break;
-      case 'iss-people':
-        apiUrl = 'http://api.open-notify.org/astros.json';
-        apiTitle = 'ISS People in Space API';
-        break;
       default:
         return {
           success: false,
@@ -100,12 +92,6 @@ function fetchApiData(options) {
         break;
       case 'exchange-rates':
         processExchangeRatesData(sheet, json);
-        break;
-      case 'iss-location':
-        processIssLocationData(sheet, json);
-        break;
-      case 'iss-people':
-        processIssPeopleData(sheet, json);
         break;
     }
     
@@ -434,205 +420,6 @@ function processExchangeRatesData(sheet, json) {
 }
 
 /**
- * Processes data from the ISS Current Location API
- * @param {SpreadsheetApp.Sheet} sheet - The sheet to write data to
- * @param {Object} json - The parsed JSON response
- */
-function processIssLocationData(sheet, json) {
-  // Extract data from the API response
-  const timestamp = json.timestamp;
-  const datetime = new Date(timestamp * 1000); // Convert Unix timestamp to JavaScript Date
-  const latitude = parseFloat(json.iss_position.latitude);
-  const longitude = parseFloat(json.iss_position.longitude);
-  
-  // Add headers and current position
-  sheet.getRange("A7:B7").setValues([["Current ISS Location (Updated at)", datetime]]);
-  sheet.getRange("B7").setNumberFormat("yyyy-MM-dd HH:mm:ss");
-  
-  sheet.getRange("A8:B8").setValues([["Latitude", latitude]]);
-  sheet.getRange("A9:B9").setValues([["Longitude", longitude]]);
-  
-  // Add map visualization
-  sheet.getRange("A11:D11").merge().setValue("ISS Position Visualization")
-    .setFontWeight("bold");
-  
-  // Create a static map image using Google Maps Static API (doesn't require an API key for basic usage)
-  const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=2&size=600x300&maptype=terrain&markers=color:red%7C${latitude},${longitude}`;
-  
-  // Add the map image
-  sheet.getRange("A12").setFormula(`=IMAGE("${mapUrl}", 4, 600, 300)`);
-  
-  // Add a coordinate plane visualization
-  sheet.getRange("A14:D14").merge().setValue("ISS Position on Earth Coordinate Plane")
-    .setFontWeight("bold");
-  
-  // Create a coordinate grid
-  createCoordinateGrid(sheet, 15, 1, latitude, longitude);
-  
-  // Add information about the ISS
-  sheet.getRange("A28:D28").merge().setValue("About the International Space Station")
-    .setFontWeight("bold");
-  
-  const issInfo = [
-    ["Altitude", "~408 km (253 mi)"],
-    ["Orbital Speed", "~28,000 km/h (17,500 mph)"],
-    ["Orbital Period", "~92 minutes (16 orbits per day)"],
-    ["Launch Date", "November 20, 1998"],
-    ["Mass", "~420,000 kg (925,000 lb)"],
-    ["Length", "109 m (358 ft)"],
-    ["Width", "73 m (240 ft)"],
-    ["Pressurized Volume", "915 m³ (32,300 ft³)"],
-    ["Data Source", "Open Notify API (http://api.open-notify.org/)"]
-  ];
-  
-  sheet.getRange(29, 1, issInfo.length, 2).setValues(issInfo);
-  
-  // Add a refresh button for real-time updates
-  sheet.getRange("D8:E8").merge().setValue("Click to Refresh ISS Location")
-    .setBackground("#4285F4")
-    .setFontColor("white")
-    .setFontWeight("bold")
-    .setHorizontalAlignment("center");
-}
-
-/**
- * Creates a simple coordinate grid to visualize the ISS position
- * @param {SpreadsheetApp.Sheet} sheet - The sheet to add the grid to
- * @param {number} startRow - The starting row for the grid
- * @param {number} startCol - The starting column for the grid
- * @param {number} latitude - The ISS latitude
- * @param {number} longitude - The ISS longitude
- */
-function createCoordinateGrid(sheet, startRow, startCol, latitude, longitude) {
-  // Create a 10x20 grid representing the Earth's coordinates
-  const rows = 10; // From 90°N to 90°S in 18° increments
-  const cols = 20; // From 180°W to 180°E in 18° increments
-  
-  // Create the grid data
-  const gridData = [];
-  for (let i = 0; i < rows; i++) {
-    const row = [];
-    for (let j = 0; j < cols; j++) {
-      // Leave empty for now
-      row.push("");
-    }
-    gridData.push(row);
-  }
-  
-  // Write the grid to the sheet
-  sheet.getRange(startRow, startCol, rows, cols).setValues(gridData);
-  
-  // Add borders to create a grid
-  sheet.getRange(startRow, startCol, rows, cols).setBorder(true, true, true, true, true, true);
-  
-  // Set cell sizes to make a more square grid
-  for (let j = startCol; j < startCol + cols; j++) {
-    sheet.setColumnWidth(j, 30);
-  }
-  for (let i = startRow; i < startRow + rows; i++) {
-    sheet.setRowHeight(i, 30);
-  }
-  
-  // Calculate which cell the ISS is in
-  const latIndex = Math.floor((90 - latitude) / 180 * rows);
-  const lonIndex = Math.floor((longitude + 180) / 360 * cols);
-  
-  // Ensure indices are within bounds
-  const boundedLatIndex = Math.min(Math.max(latIndex, 0), rows - 1);
-  const boundedLonIndex = Math.min(Math.max(lonIndex, 0), cols - 1);
-  
-  // Mark the ISS position with a red background
-  sheet.getRange(startRow + boundedLatIndex, startCol + boundedLonIndex)
-    .setBackground("#F4C7C3")
-    .setValue("ISS");
-  
-  // Add coordinate labels
-  sheet.getRange(startRow - 1, startCol + Math.floor(cols / 2)).setValue("North Pole")
-    .setHorizontalAlignment("center");
-  sheet.getRange(startRow + rows, startCol + Math.floor(cols / 2)).setValue("South Pole")
-    .setHorizontalAlignment("center");
-  sheet.getRange(startRow + Math.floor(rows / 2), startCol - 1).setValue("West")
-    .setHorizontalAlignment("right");
-  sheet.getRange(startRow + Math.floor(rows / 2), startCol + cols).setValue("East")
-    .setHorizontalAlignment("left");
-}
-
-/**
- * Processes data from the ISS People in Space API
- * @param {SpreadsheetApp.Sheet} sheet - The sheet to write data to
- * @param {Object} json - The parsed JSON response
- */
-function processIssPeopleData(sheet, json) {
-  // Extract data from the API response
-  const numberOfPeople = json.number;
-  const people = json.people;
-  
-  // Display the number of people in space
-  sheet.getRange("A7:B7").setValues([["Number of People Currently in Space:", numberOfPeople]])
-    .setFontWeight("bold");
-  
-  // Add table headers
-  sheet.getRange("A9:C9").setValues([["Name", "Craft", "Days in Space (Est.)"]]).setFontWeight("bold");
-  
-  // Process data for each astronaut
-  const astronautData = [];
-  
-  for (const person of people) {
-    // For demo purposes, generate a random number of days in space
-    // In a real application, you would get this data from another source
-    const daysInSpace = Math.floor(Math.random() * 180) + 1;
-    
-    astronautData.push([
-      person.name,
-      person.craft,
-      daysInSpace
-    ]);
-  }
-  
-  // Write data to the sheet
-  sheet.getRange(10, 1, astronautData.length, 3).setValues(astronautData);
-  
-  // Add some formatting
-  sheet.getRange(10, 3, astronautData.length, 1).setNumberFormat("0");
-  
-  // Auto-resize columns
-  for (let i = 1; i <= 3; i++) {
-    sheet.autoResizeColumn(i);
-  }
-  
-  // Add a simple bar chart showing days in space
-  const chartRange = sheet.getRange(10, 1, astronautData.length, 3);
-  
-  const chart = sheet.newChart()
-    .setChartType(Charts.ChartType.BAR)
-    .addRange(chartRange)
-    .setPosition(10 + astronautData.length + 2, 1, 0, 0)
-    .setOption('title', 'Days in Space by Astronaut')
-    .setOption('legend', {position: 'none'})
-    .setOption('hAxis', {title: 'Days'})
-    .setOption('vAxis', {title: 'Astronaut'})
-    .setOption('height', 300)
-    .setOption('width', 500)
-    .build();
-  
-  sheet.insertChart(chart);
-  
-  // Add information about astronauts in space
-  sheet.getRange("A25:D25").merge().setValue("About People in Space")
-    .setFontWeight("bold");
-  
-  const info = [
-    ["The International Space Station (ISS) is typically home to 6-7 astronauts at any given time."],
-    ["Astronauts usually stay on the ISS for about 6 months, though some missions last longer."],
-    ["Expedition crews are made up of astronauts from various space agencies including NASA, Roscosmos, ESA, JAXA, and CSA."],
-    ["The ISS has been continuously occupied since November 2, 2000."],
-    ["Data Source: Open Notify API (http://api.open-notify.org/)"]
-  ];
-  
-  sheet.getRange(26, 1, info.length, 1).setValues(info);
-}
-
-/**
  * Shows a dialog with data import options
  */
 function showDataImportOptions() {
@@ -729,6 +516,14 @@ function importCalendarEvents() {
     for (let i = 1; i <= headers.length; i++) {
       sheet.autoResizeColumn(i);
     }
+    
+    // Add a button to create calendar event (simulated with a shape)
+    sheet.getRange("A" + (sheet.getLastRow() + 3) + ":B" + (sheet.getLastRow() + 3)).merge()
+      .setValue('Create Sample Event')
+      .setFontWeight("bold")
+      .setBackground("#4285F4")
+      .setFontColor("white")
+      .setHorizontalAlignment("center");
     
     return {
       success: true,
@@ -855,183 +650,29 @@ function showEmailAutomationDialog() {
 }
 
 /**
- * Actually sends a test email based on form input (real implementation)
+ * Sends a test email based on form input
  * @param {Object} formData - Email form data
  * @return {Object} Result object with success status and message
  */
 function sendTestEmail(formData) {
   try {
-    // Create the email body with proper formatting
-    let body = formData.body;
+    // In a real implementation, this would actually send emails
+    // For demo purposes, we'll just log the data and return success
     
-    // If including data from the sheet, add it to the email
-    if (formData.includeData) {
-      const ss = SpreadsheetApp.getActiveSpreadsheet();
-      const sheet = ss.getSheetByName(CONFIG.SHEETS.INTEGRATION_LAB);
-      
-      if (sheet) {
-        // Get some sample data to include
-        const dataRange = sheet.getRange("A7:C15").getValues();
-        
-        if (formData.dataFormat === 'table') {
-          // Create an HTML table for the data
-          let tableHtml = '<br><br><table border="1" cellpadding="5" style="border-collapse:collapse;">';
-          
-          // Add headers
-          tableHtml += '<tr style="background-color:#f3f3f3;font-weight:bold;">';
-          for (let i = 0; i < 3; i++) {
-            tableHtml += '<th>' + (dataRange[0][i] || '') + '</th>';
-          }
-          tableHtml += '</tr>';
-          
-          // Add data rows
-          for (let i = 1; i < dataRange.length; i++) {
-            tableHtml += '<tr>';
-            for (let j = 0; j < 3; j++) {
-              tableHtml += '<td>' + (dataRange[i][j] || '') + '</td>';
-            }
-            tableHtml += '</tr>';
-          }
-          
-          tableHtml += '</table>';
-          
-          // Add the table to the email body
-          body += '<br><br><p>Attached Data:</p>' + tableHtml;
-        } else {
-          // For CSV format, we'll just note that it would be attached
-          body += '<br><br><p>Note: In a real implementation, a CSV file would be attached here.</p>';
-        }
-      }
-    }
+    console.log('Email Data:', formData);
     
-    // Check if email is actually being sent or simulated
-    const actualSend = false; // Set to true to actually send emails (requires Gmail permission)
+    // Simulate email sending delay
+    Utilities.sleep(2000);
     
-    if (actualSend) {
-      // Actually send the email using GmailApp
-      GmailApp.sendEmail(
-        formData.to,
-        formData.subject,
-        // Plain text version
-        body.replace(/<[^>]*>/g, ''), // Remove HTML tags for plain text
-        {
-          htmlBody: body, // HTML version
-          name: 'SheetsLab Demo'
-        }
-      );
-      
-      return {
-        success: true,
-        message: 'Email successfully sent to ' + formData.to
-      };
-    } else {
-      // Simulate email sending
-      console.log('Email Data:', formData);
-      
-      // Simulate sending delay
-      Utilities.sleep(2000);
-      
-      return {
-        success: true,
-        message: 'Email would be sent to ' + formData.to + ' (This is a simulation, no actual email was sent)'
-      };
-    }
+    return {
+      success: true,
+      message: 'Email would be sent to ' + formData.to + ' (This is a simulation, no actual email was sent)'
+    };
   } catch (error) {
     console.error('Error sending test email:', error);
     return {
       success: false,
-      message: 'Error sending email: ' + error.toString()
+      message: 'Error in email simulation: ' + error.toString()
     };
-  }
-}
-
-/**
- * Schedules recurring emails based on the configuration
- * @param {Object} config - Email configuration
- * @return {Object} Result with success status and trigger ID
- */
-function scheduleRecurringEmail(config) {
-  try {
-    // Delete any existing triggers with the same label
-    const existingTriggers = ScriptApp.getProjectTriggers();
-    for (const trigger of existingTriggers) {
-      if (trigger.getHandlerFunction() === 'sendScheduledEmail') {
-        ScriptApp.deleteTrigger(trigger);
-      }
-    }
-    
-    // Create the appropriate trigger based on the schedule type
-    let trigger;
-    switch (config.schedule) {
-      case 'daily':
-        trigger = ScriptApp.newTrigger('sendScheduledEmail')
-          .timeBased()
-          .atHour(9) // 9 AM
-          .everyDays(1)
-          .create();
-        break;
-      case 'weekly':
-        trigger = ScriptApp.newTrigger('sendScheduledEmail')
-          .timeBased()
-          .onWeekDay(ScriptApp.WeekDay.MONDAY)
-          .atHour(9) // 9 AM
-          .create();
-        break;
-      case 'monthly':
-        trigger = ScriptApp.newTrigger('sendScheduledEmail')
-          .timeBased()
-          .onMonthDay(1) // 1st day of the month
-          .atHour(9) // 9 AM
-          .create();
-        break;
-      default:
-        return {
-          success: false,
-          message: 'Invalid schedule type'
-        };
-    }
-    
-    // Store the configuration in Properties service
-    const props = PropertiesService.getScriptProperties();
-    props.setProperty('emailConfig', JSON.stringify(config));
-    
-    return {
-      success: true,
-      message: 'Email scheduled successfully!',
-      triggerId: trigger.getUniqueId()
-    };
-  } catch (error) {
-    console.error('Error scheduling email:', error);
-    return {
-      success: false,
-      message: 'Error scheduling email: ' + error.toString()
-    };
-  }
-}
-
-/**
- * Handler for sending scheduled emails
- * Called by the time-based trigger
- */
-function sendScheduledEmail() {
-  try {
-    // Get the email configuration from Properties service
-    const props = PropertiesService.getScriptProperties();
-    const configStr = props.getProperty('emailConfig');
-    
-    if (!configStr) {
-      console.error('No email configuration found');
-      return;
-    }
-    
-    const config = JSON.parse(configStr);
-    
-    // Send the email
-    sendTestEmail(config);
-    
-    // Log the success
-    console.log('Scheduled email sent successfully at ' + new Date());
-  } catch (error) {
-    console.error('Error sending scheduled email:', error);
   }
 }

@@ -308,7 +308,8 @@ function checkFirstRun() {
   
   if (!hasRun) {
     // This is the first run, show the welcome dialog
-    setTimeout(showWelcomeDialog, 1000); // Slight delay to ensure menu is loaded first
+    // Since we can't use setTimeout in Apps Script, we'll show the dialog immediately
+    showWelcomeDialog();
     
     // Mark as initialized
     props.setProperty('sheetsLabInitialized', 'true');
