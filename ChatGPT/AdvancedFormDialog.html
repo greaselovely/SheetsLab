@@ -1,0 +1,42 @@
+<!-- AdvancedFormDialog.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Advanced Form</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+  <div class="container mt-3">
+    <h5>Advanced Form</h5>
+    <form id="advancedForm">
+      <div class="form-group">
+        <label for="inputName">Name</label>
+        <input type="text" class="form-control" id="inputName" placeholder="Enter name">
+      </div>
+      <div class="form-group">
+        <label for="inputEmail">Email address</label>
+        <input type="email" class="form-control" id="inputEmail" placeholder="Enter email">
+      </div>
+      <div class="form-group">
+        <label for="inputMessage">Message</label>
+        <textarea class="form-control" id="inputMessage" rows="3"></textarea>
+      </div>
+      <button type="button" class="btn btn-primary" onclick="submitAdvancedForm()">Submit</button>
+    </form>
+    <div id="formResponse" class="mt-3"></div>
+  </div>
+  <script>
+    function submitAdvancedForm() {
+      var name = document.getElementById('inputName').value;
+      var email = document.getElementById('inputEmail').value;
+      var message = document.getElementById('inputMessage').value;
+      google.script.run.withSuccessHandler(function(response) {
+        document.getElementById('formResponse').innerHTML = '<div class="alert alert-success">' + response + '</div>';
+      }).processAdvancedForm(name, email, message);
+    }
+  </script>
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
