@@ -1,0 +1,231 @@
+<!-- EmailAutomationDialog.html -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  </head>
+  <body class="p-3">
+    <div class="container-fluid">
+      <h3 class="text-primary mb-3">Email Automation Demo</h3>
+      <p class="text-secondary mb-4">This demo shows how Google Sheets can be used to send automated emails based on data and triggers.</p>
+      
+      <div class="alert alert-info">
+        <strong>Note:</strong> This is a simulation. No actual emails will be sent from this demo.
+      </div>
+      
+      <div id="email-form">
+        <form id="email-form" onsubmit="sendTestEmail(); return false;">
+          <div class="mb-3">
+            <label for="email-to" class="form-label">Recipient Email</label>
+            <input type="email" class="form-control" id="email-to" required placeholder="recipient@example.com">
+          </div>
+          
+          <div class="mb-3">
+            <label for="email-subject" class="form-label">Subject</label>
+            <input type="text" class="form-control" id="email-subject" required placeholder="Email subject">
+          </div>
+          
+          <div class="mb-3">
+            <label for="email-template" class="form-label">Template</label>
+            <select class="form-select" id="email-template" required onchange="updateEmailBody()">
+              <option value="" selected disabled>Choose an email template...</option>
+              <option value="welcome">Welcome Email</option>
+              <option value="notification">Notification</option>
+              <option value="reminder">Reminder</option>
+              <option value="report">Weekly Report</option>
+              <option value="custom">Custom Template</option>
+            </select>
+          </div>
+          
+          <div class="mb-3">
+            <label for="email-body" class="form-label">Email Body</label>
+            <textarea class="form-control" id="email-body" rows="6" required placeholder="Email content"></textarea>
+          </div>
+          
+          <div class="mb-3 border p-3 rounded bg-light">
+            <label class="form-label fw-bold">Include Data from Sheet</label>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="include-data">
+              <label class="form-check-label" for="include-data">
+                Attach data from current sheet
+              </label>
+            </div>
+            <div class="mt-2" id="data-format-container">
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="data-format" id="format-table" value="table" checked disabled>
+                <label class="form-check-label" for="format-table">HTML Table</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="data-format" id="format-csv" value="csv" disabled>
+                <label class="form-check-label" for="format-csv">CSV Attachment</label>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mb-3 border p-3 rounded bg-light">
+            <label class="form-label fw-bold">Automation Trigger</label>
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="schedule-email">
+              <label class="form-check-label" for="schedule-email">
+                Schedule this email
+              </label>
+            </div>
+            <div class="mt-2" id="schedule-options" style="display: none;">
+              <select class="form-select" id="schedule-type">
+                <option value="daily">Daily</option>
+                <option value="weekly" selected>Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="d-flex justify-content-between mt-4">
+            <button type="submit" class="btn btn-primary">Send Test Email</button>
+            <button type="button" class="btn btn-secondary" onclick="google.script.host.close()">Cancel</button>
+          </div>
+        </form>
+      </div>
+      
+      <div id="loading-container" class="text-center py-5 d-none">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-3">Sending test email...</p>
+      </div>
+      
+      <div id="result-container" class="mt-4 d-none">
+        <div id="success-alert" class="alert alert-success d-none">
+          <h5>Email Sent!</h5>
+          <p id="success-message"></p>
+          <div class="d-flex justify-content-between mt-2">
+            <button type="button" class="btn btn-success" onclick="resetForm()">Send Another</button>
+            <button type="button" class="btn btn-outline-secondary" onclick="google.script.host.close()">Close</button>
+          </div>
+        </div>
+        
+        <div id="error-alert" class="alert alert-danger d-none">
+          <h5>Error</h5>
+          <p id="error-message"></p>
+          <button type="button" class="btn btn-danger mt-2" onclick="resetForm()">Try Again</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+      // Template content for different email types
+      const emailTemplates = {
+        welcome: "Dear {{name}},\n\nWelcome to our service! We're excited to have you on board.\n\nHere are some resources to help you get started:\n- User Guide\n- FAQ\n- Support Contact\n\nIf you have any questions, please don't hesitate to reach out.\n\nBest regards,\nThe Team",
+        notification: "Dear {{name}},\n\nThis is a notification that your recent order (#{{order_id}}) has been processed and is now {{status}}.\n\nYou can check the details by logging into your account.\n\nThank you for your business!\n\nBest regards,\nCustomer Support",
+        reminder: "Dear {{name}},\n\nThis is a friendly reminder about your upcoming appointment on {{date}} at {{time}}.\n\nPlease let us know if you need to reschedule.\n\nBest regards,\nScheduling Team",
+        report: "Dear {{name}},\n\nAttached is your weekly report for the period ending {{date}}.\n\nKey Highlights:\n- Total Revenue: ${{revenue}}\n- New Customers: {{new_customers}}\n- Outstanding Tasks: {{tasks}}\n\nPlease review and let us know if you have any questions.\n\nBest regards,\nAnalytics Team",
+        custom: ""
+      };
+      
+      // Elements
+      let includeDataCheckbox;
+      let dataFormatRadios;
+      let scheduleEmailCheckbox;
+      let scheduleOptions;
+      
+      // Initialize when the document is ready
+      document.addEventListener('DOMContentLoaded', function() {
+        includeDataCheckbox = document.getElementById('include-data');
+        dataFormatRadios = document.querySelectorAll('input[name="data-format"]');
+        scheduleEmailCheckbox = document.getElementById('schedule-email');
+        scheduleOptions = document.getElementById('schedule-options');
+        
+        // Set up event listeners
+        includeDataCheckbox.addEventListener('change', function() {
+          for (const radio of dataFormatRadios) {
+            radio.disabled = !this.checked;
+          }
+        });
+        
+        scheduleEmailCheckbox.addEventListener('change', function() {
+          scheduleOptions.style.display = this.checked ? 'block' : 'none';
+        });
+      });
+      
+      // Update the email body based on selected template
+      function updateEmailBody() {
+        const templateSelect = document.getElementById('email-template');
+        const emailBodyTextarea = document.getElementById('email-body');
+        
+        const selectedTemplate = templateSelect.value;
+        
+        if (selectedTemplate && selectedTemplate !== 'custom') {
+          emailBodyTextarea.value = emailTemplates[selectedTemplate];
+        } else if (selectedTemplate === 'custom') {
+          emailBodyTextarea.value = '';
+          emailBodyTextarea.placeholder = 'Enter your custom email content here...';
+        }
+      }
+      
+      // Send a test email
+      function sendTestEmail() {
+        // Get form values
+        const to = document.getElementById('email-to').value;
+        const subject = document.getElementById('email-subject').value;
+        const body = document.getElementById('email-body').value;
+        const includeData = document.getElementById('include-data').checked;
+        const dataFormat = document.querySelector('input[name="data-format"]:checked')?.value || 'table';
+        const scheduleEmail = document.getElementById('schedule-email').checked;
+        const scheduleType = document.getElementById('schedule-type').value;
+        
+        // Create email data object
+        const emailData = {
+          to: to,
+          subject: subject,
+          body: body,
+          includeData: includeData,
+          dataFormat: dataFormat,
+          schedule: scheduleEmail ? scheduleType : null
+        };
+        
+        // Show loading state
+        document.getElementById('email-form').classList.add('d-none');
+        document.getElementById('loading-container').classList.remove('d-none');
+        
+        // Call server function
+        google.script.run
+          .withSuccessHandler(handleSuccess)
+          .withFailureHandler(handleError)
+          .sendTestEmail(emailData);
+      }
+      
+      // Handle successful email sending
+      function handleSuccess(result) {
+        document.getElementById('loading-container').classList.add('d-none');
+        document.getElementById('result-container').classList.remove('d-none');
+        
+        if (result.success) {
+          document.getElementById('success-alert').classList.remove('d-none');
+          document.getElementById('success-message').textContent = result.message;
+        } else {
+          handleError(result.message);
+        }
+      }
+      
+      // Handle email sending error
+      function handleError(error) {
+        document.getElementById('loading-container').classList.add('d-none');
+        document.getElementById('result-container').classList.remove('d-none');
+        document.getElementById('error-alert').classList.remove('d-none');
+        document.getElementById('error-message').textContent = error;
+      }
+      
+      // Reset the form to try again
+      function resetForm() {
+        document.getElementById('result-container').classList.add('d-none');
+        document.getElementById('success-alert').classList.add('d-none');
+        document.getElementById('error-alert').classList.add('d-none');
+        document.getElementById('email-form').classList.remove('d-none');
+      }
+    </script>
+  </body>
+</html>

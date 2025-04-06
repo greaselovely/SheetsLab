@@ -1,0 +1,165 @@
+<!-- NavigationSidebar.html -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+      /* Small custom additions to Bootstrap */
+      .lab-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 8px;
+      }
+    </style>
+  </head>
+  <body class="bg-light">
+    <div class="bg-primary text-white py-3 px-3 mb-3">
+      <h4 id="project-name" class="mb-0">SheetsLab Navigator</h4>
+      <small id="version" class="opacity-75">Version 1.0.0</small>
+    </div>
+    
+    <div class="px-3">
+      <h6 class="text-secondary mb-2">NAVIGATE TO</h6>
+      <div id="nav-items" class="mb-4">
+        <!-- Navigation items will be added here dynamically -->
+        <div class="d-grid">
+          <button class="btn btn-outline-secondary text-start mb-2">Loading sheets...</button>
+        </div>
+      </div>
+      
+      <h6 class="text-secondary mb-2">TOOLS</h6>
+      <div class="d-grid gap-2 mb-4">
+        <button class="btn btn-outline-secondary text-start" onclick="showAboutDialog()">
+          About SheetsLab
+        </button>
+        <button class="btn btn-outline-secondary text-start" onclick="resetInitialization()">
+          Reinitialize SheetsLab
+        </button>
+      </div>
+    </div>
+    
+    <div class="mt-4 p-3 border-top text-center">
+      <div class="text-secondary mb-2">SheetsLab - Google Sheets Capability Showcase</div>
+      <a class="btn btn-primary btn-sm" onclick="window.open('<?= CONFIG.GITHUB_URL ?>', '_blank')">
+        View on GitHub
+      </a>
+    </div>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+      // Load navigation data when the page loads
+      document.addEventListener('DOMContentLoaded', loadNavigationData);
+      
+      // Function to load the navigation data
+      function loadNavigationData() {
+        google.script.run
+          .withSuccessHandler(buildNavigation)
+          .withFailureHandler(handleError)
+          .getNavigationData();
+      }
+      
+      // Build the navigation elements
+      function buildNavigation(data) {
+        // Update header information
+        document.getElementById('project-name').textContent = data.projectName;
+        document.getElementById('version').textContent = 'Version ' + data.version;
+        
+        // Clear the loading placeholder
+        const navContainer = document.getElementById('nav-items');
+        navContainer.innerHTML = '';
+        
+        // Add each sheet as a navigation item
+        data.sheets.forEach(function(sheet) {
+          // Create the navigation item div
+          const navDiv = document.createElement('div');
+          navDiv.className = 'd-grid mb-2';
+          
+          // Create the button
+          const navBtn = document.createElement('button');
+          navBtn.className = 'btn text-start ' + 
+            (sheet.isActive ? 'btn-primary' : 'btn-outline-secondary');
+          navBtn.setAttribute('data-gid', sheet.gid);
+          
+          // Add colored dot indicators for different labs
+          const labIndicator = document.createElement('span');
+          labIndicator.className = 'lab-indicator';
+          
+          // Set the color based on the sheet name
+          if (sheet.name.includes('Home')) {
+            labIndicator.style.backgroundColor = data.colors.PRIMARY;
+          } else if (sheet.name.includes('UI')) {
+            labIndicator.style.backgroundColor = data.colors.SECONDARY;
+          } else if (sheet.name.includes('Data')) {
+            labIndicator.style.backgroundColor = data.colors.ACCENT;
+          } else if (sheet.name.includes('Visualization')) {
+            labIndicator.style.backgroundColor = '#FB8C00'; // Orange
+          } else if (sheet.name.includes('Integration')) {
+            labIndicator.style.backgroundColor = '#8E24AA'; // Purple
+          } else if (sheet.name.includes('Formula')) {
+            labIndicator.style.backgroundColor = '#0288D1'; // Light Blue
+          }
+          
+          navBtn.appendChild(labIndicator);
+          navBtn.appendChild(document.createTextNode(sheet.name));
+          
+          // Add click event to navigate to the sheet
+          navBtn.onclick = function() {
+            navigateToSheet(sheet.gid);
+          };
+          
+          navDiv.appendChild(navBtn);
+          navContainer.appendChild(navDiv);
+        });
+      }
+      
+      // Navigate to a sheet by GID
+      function navigateToSheet(gid) {
+        google.script.run
+          .withSuccessHandler(function() {
+            // Update the active indicator
+            const navBtns = document.querySelectorAll('#nav-items button');
+            navBtns.forEach(function(btn) {
+              if (btn.getAttribute('data-gid') == gid) {
+                btn.classList.remove('btn-outline-secondary');
+                btn.classList.add('btn-primary');
+              } else {
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-outline-secondary');
+              }
+            });
+          })
+          .activateSheetByGid(gid);
+      }
+      
+      // Show the about dialog
+      function showAboutDialog() {
+        google.script.run.showAboutDialog();
+      }
+      
+      // Reinitialize SheetsLab
+      function resetInitialization() {
+        if (confirm('This will reinitialize all SheetsLab sheets. Any custom content you\'ve added may be lost. Continue?')) {
+          google.script.run
+            .withSuccessHandler(function() {
+              // Reload the navigation data
+              loadNavigationData();
+            })
+            .initializeSheetsLab();
+        }
+      }
+      
+      // Handle errors
+      function handleError(error) {
+        console.error('Error:', error);
+        const navContainer = document.getElementById('nav-items');
+        navContainer.innerHTML = '<div class="alert alert-danger">Error loading navigation. Please try again.</div>';
+      }
+    </script>
+  </body>
+</html>
