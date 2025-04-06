@@ -47,4 +47,8 @@ Tree:
 │   ├── Utilities.gs
 │   └── Visualization.gs
 
+```
+touch AdvancedFormDialog.html ApiConnectionDialog.html Config.gs DataImportDialog.html DataTools.gs EmailAutomationDialog.html FormulaExamples.gs Integration.gs Menu.gs NavigationSidebar.html ProgressDemo.html Prompt.md README.md Setup.gs UI.gs Utilities.gs Visualization.gs
+```
+
 I'd like to continue working on this project. Can you help me with the next steps or enhancements?
