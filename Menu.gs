@@ -52,7 +52,7 @@ function onOpen() {
   // Check if this is the first time opening the spreadsheet
   checkFirstRun();
 }
-}
+
 
 /**
  * Shows a toast notification with a message

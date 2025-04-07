@@ -247,7 +247,7 @@ function navigateToArrayFormulas() {
     
     // Set the active range to the title
     sheet.setActiveRange(sheet.getRange("A6"));
-  }
+  
   
   /**
    * Creates QUERY function examples in the Formula Lab sheet
@@ -672,3 +672,4 @@ function navigateToArrayFormulas() {
       "  return businessDays;\n" +
       "}"
     ).setFontFamily("Courier New");
+  }
